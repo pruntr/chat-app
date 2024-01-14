@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
 
@@ -7,25 +8,30 @@ function Chat({ socket, username, room }) {
 
   const sendMessage = async () => {
     if (currentMessage !== "") {
+      const currentTime = Date.now();
       const messageData = {
+        id: currentTime,
         room: room,
         author: username,
         message: currentMessage,
-        time:
-          new Date(Date.now()).getHours() +
-          ":" +
-          new Date(Date.now()).getMinutes(),
+        time: new Date(currentTime).getHours() + ":" + new Date(currentTime).getMinutes(),
       };
 
+      setMessageList((list) => [...list, messageData]); // Update the list immediately
       await socket.emit("send_message", messageData);
-      setMessageList((list) => [...list, messageData]);
       setCurrentMessage("");
     }
   };
 
   useEffect(() => {
     socket.on("receive_message", (data) => {
-      setMessageList((list) => [...list, data]);
+      setMessageList((list) => {
+        // Check if the message is not already in the list based on the unique identifier
+        const isDuplicate = list.some((msg) => msg.id === data.id);
+
+        // Only add the message if it's not a duplicate
+        return isDuplicate ? list : [...list, data];
+      });
     });
   }, [socket]);
 
@@ -41,6 +47,7 @@ function Chat({ socket, username, room }) {
               <div
                 className="message"
                 id={username === messageContent.author ? "you" : "other"}
+                key={messageContent.id}
               >
                 <div>
                   <div className="message-content">
